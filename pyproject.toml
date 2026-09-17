@@ -1,0 +1,44 @@
+[project]
+name = "labourcrew"
+version = "0.1.0"
+description = "LabourCrew: An Evidence-Gated Agentic RAG Framework for Trustworthy Multi-Role Deliberation and Statutory Reasoning over Labour Law Statutes"
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "python-dotenv>=1.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "tenacity>=8.2",
+    # Agent orchestration
+    "langchain>=1.2",
+    "langchain-openai>=1.1",
+    "langgraph>=1.1",
+    # LLM providers
+    "openai>=2.0,<3.0",
+    "google-genai>=2.10",
+    # Embeddings (local BAAI/bge-m3, multilingual incl. Bangla)
+    "sentence-transformers>=3.0",
+    # Vector store (StatuteGraph substrate) -- milvus-lite listed explicitly
+    # (not just via the pymilvus[milvus_lite] extra): on Windows that extra
+    # doesn't reliably pull it in.
+    "pymilvus>=3.0",
+    "milvus-lite>=3.1.1",
+    # PDF ingestion (render pages for Gemini OCR)
+    "pymupdf>=1.26",
+    # RAGAS scoring (scripts/evaluate_ragas.py). Pinned to 0.4.3 -- see that
+    # script's top-of-file comment for a known langchain-community import
+    # issue this version needs a stub for. On Windows, ragas's own dependency
+    # list pulls in scikit-network, which needs a C++ build toolchain and has
+    # no prebuilt wheel for newer CPython -- evaluate_ragas.py's imports don't
+    # use it, so Windows users can `uv pip install ragas==0.4.3 --no-deps`
+    # plus `uv pip install datasets appdirs diskcache instructor nest-asyncio`
+    # instead of letting this dependency pull the full ragas tree.
+    "ragas==0.4.3",
+]
+
+[tool.uv]
+# labourcrew/ and statutegraph/ are not an installable package -- scripts/*.py
+# insert the repo root onto sys.path itself (see README.md's Setup section).
+# `uv sync` should just build the dependency venv, not try to build/install
+# this repo as a wheel.
+package = false
