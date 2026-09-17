@@ -111,9 +111,3 @@ python scripts/ask.py "একজন শ্রমিক হিসেবে চা
 (Prefix each `python ...` above with `uv run` if you set up the environment via `uv sync`.)
 
 `scripts/ask.py` prints the final status (`TGLO` / `DEGRADED` / `UNDECIDED`), the opinion narrative, accepted/rejected/undecided claim IDs, the trustworthiness scorecard, and every agent's status (so a failed/degraded agent is always visible, never silent).
-
-## Known limitations (v1)
-
-- **Cross-reference extraction is best-effort.** Only `ধারা N` / `উপ-ধারা (N)` textual patterns are matched; references to another *chapter* (`অধ্যায়`) are not yet linked.
-- **Trust Gate citation failures are handled by stripping**, not by reopening the whole board loop (stripping was chosen for a simpler, guaranteed-terminating graph).
-- Agent prompts are a first pass, not tuned — expect to iterate on them once you're looking at real outputs over the full Act.
