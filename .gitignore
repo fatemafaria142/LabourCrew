@@ -19,3 +19,5 @@ data/runs/
 
 ablation_study/*/output/*
 !ablation_study/*/output/.gitkeep
+
+.claude/skills/
