@@ -20,7 +20,7 @@ We evaluate on **LabourActQA**, a 500-item Bangla question set built directly ov
 
 ---
 
-## Framework
+## The LabourCrew Framework
 
 A query flows through five phases, all agents communicating only through the shared **Formal Case Ledger (FCL)**:
 
@@ -57,22 +57,36 @@ The Trust Auditor scores each claim as a weighted composite of validity (cited I
 
 ## Results
 
-**RAGAS evaluation against ablations and external retrieval baselines** (n = 500, GPT-4.1 judge):
+All scores below (except the per-category and human-evaluation tables) are measured with [RAGAS](https://github.com/explodinggradients/ragas), using GPT-4.1 as judge, on the same 500 **LabourActQA** questions.
+
+### Against external retrieval baselines
+
+LabourCrew is compared end-to-end against three retrieval strategies commonly used in RAG pipelines, with the chat model and corpus held fixed:
 
 | Configuration | Answer Relevancy ↑ | Context Relevancy ↑ | Context Precision ↑ | Context Recall ↑ | Noise Sensitivity ↓ |
 |---|--:|--:|--:|--:|--:|
 | **LabourCrew** | **0.862** | **0.891** | **0.914** | **0.913** | **0.081** |
+| Hierarchical RAG | 0.828 | 0.872 | 0.853 | 0.898 | 0.117 |
+| HyDE RAG | 0.839 | 0.858 | 0.861 | 0.905 | 0.135 |
+| Graph-RAG | 0.815 | 0.850 | 0.842 | 0.902 | 0.156 |
+
+### Ablation study
+
+Each row removes one agent from the full eleven-agent board, holding everything else fixed, to isolate that agent's contribution:
+
+| Configuration | Answer Relevancy ↑ | Context Relevancy ↑ | Context Precision ↑ | Context Recall ↑ | Noise Sensitivity ↓ |
+|---|--:|--:|--:|--:|--:|
+| **LabourCrew (full)** | **0.862** | **0.891** | **0.914** | **0.913** | **0.081** |
 | w/o Trust Auditor | 0.839 | 0.880 | 0.879 | 0.904 | 0.121 |
 | w/o Link Hopper | 0.842 | 0.829 | 0.844 | 0.844 | 0.129 |
 | w/o Worker Counsel | 0.833 | 0.885 | 0.891 | 0.905 | 0.095 |
 | w/o Employer Counsel | 0.846 | 0.887 | 0.902 | 0.908 | 0.089 |
 | w/o Legal Interpreter | 0.838 | 0.882 | 0.894 | 0.904 | 0.094 |
 | w/o Citation Checker | 0.836 | 0.874 | 0.872 | 0.899 | 0.123 |
-| Hierarchical RAG | 0.828 | 0.872 | 0.853 | 0.898 | 0.117 |
-| HyDE RAG | 0.839 | 0.858 | 0.861 | 0.905 | 0.135 |
-| Graph-RAG | 0.815 | 0.850 | 0.842 | 0.902 | 0.156 |
 
-**Per-category execution-trace evaluation**, easiest → hardest (EC: Evidence Coverage, PC: Path Completeness, GVCP: Gate-Verified Citation Precision, CBP: Citation-Based Precision):
+### Per-category breakdown
+
+Deterministic, execution-trace evaluation of the full system, easiest → hardest (EC: Evidence Coverage, PC: Path Completeness, GVCP: Gate-Verified Citation Precision, CBP: Citation-Based Precision):
 
 | Category | N | Lat. (s) | Rounds | EC | PC | GVCP | TGLO | CBP |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|
@@ -86,14 +100,18 @@ The Trust Auditor scores each claim as a weighted composite of validity (cited I
 
 Gate-verified citation precision and the decisive-opinion (TGLO) rate stay nearly flat across difficulty; only citation-based precision drops on the hardest categories, since the system works harder (more rounds, higher latency) rather than relaxing what it is willing to cite.
 
-**Calibrated vs. categorical release gate** (target risk α = 0.10):
+### Calibrated vs. categorical release gate
+
+At a fixed target risk level (α = 0.10):
 
 | Gate Mode | GVCP | Empirical False-Accept Rate | Guarantee Holds? | TGLO Rate |
 |---|--:|--:|:--:|--:|
 | Categorical (LLM-decided) | 0.938 | 0.147 | **No** | 97.6% |
 | **Calibrated (CRC, ours)** | **0.991** | **0.081** | **Yes** | **99.0%** |
 
-**Human evaluation** (two legal-domain evaluators, 1–5 Likert scale):
+### Human evaluation
+
+Two legal-domain evaluators, 1-5 Likert scale:
 
 | Criterion | Mean ± SD |
 |---|--:|
@@ -106,17 +124,13 @@ Gate-verified citation precision and the decisive-opinion (TGLO) rate stay nearl
 
 ![LabourCrew results](diagrams/LabourCrew-Results.png)
 
-**Headline ablation findings:**
+### Takeaways
 - Structure-aware retrieval beats dense-only search monotonically as layers are added (dense 0.52 → +BM25 0.69 → +link hops 0.74 → full StatuteGraph **0.78** initial retrieval precision).
 - The Evidence Exchange Protocol cuts unsupported claims from 6.4% to **1.2%** while every other metric improves alongside it: the restriction closes a real gap, not a conservatism trade-off.
 - Fault-tolerant orchestration cuts failed runs by an order of magnitude: 14.2% (sequential, no supervision) → **1.0%** (full supervisor), while latency falls over the same progression.
 - The full Trust Gate drives citation error from 0.441 (no gate) to **0.009**, combining the Citation Checker and Trust Auditor rather than either catching the same errors alone.
 
 ---
-
-## Why Gemini for OCR, not the PDF's text layer or GPT-4o(-mini)
-
-The source PDF is typeset in a legacy pre-Unicode Bangla font (SutonnyMJ/ShonarBangla). These fonts store glyphs in visual draw order and hijack ASCII code points for common conjuncts (শ্র, প্র, ...), so direct text extraction (pypdf, PyMuPDF `get_text()`) silently corrupts the statutory text. GPT-4o-mini and GPT-4o vision were both tested on rendered page images and **hallucinated**: invented wording, wrong section numbers, one inserted a random English word mid-sentence. `gemini-3-flash-preview` vision transcription was cross-checked against the source images and reproduced the text (including exact section/subsection numbers) correctly, so it is the OCR path used here. Still: **spot-check OCR output against the source PDF** before treating it as gold data.
 
 ## Setup
 
